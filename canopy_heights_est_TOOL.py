@@ -17,10 +17,10 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
     # Only execute code if input ATL03.h5 filepath and outpath declared
     if (atl03FileLocation and storePath):
 
-        # Create download directy if necessary
+        # Create download directory if necessary
         Path(atl03FileLocation).mkdir(parents=True, exist_ok=True)
 
-        # Create storage directy if necessary
+        # Create storage directory if necessary
         Path(storePath).mkdir(parents=True, exist_ok=True)
 
         # Download ICESat-2 files

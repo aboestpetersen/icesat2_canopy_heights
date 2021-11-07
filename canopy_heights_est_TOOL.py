@@ -1,29 +1,45 @@
-import pandas as pd
-from pathlib import Path
-from tqdm.notebook import tqdm_notebook
-import os
 import glob
+import os
 import sys
+from pathlib import Path
 
+import icepyx as ipx
+import pandas as pd
 from pandas.core.reshape.reshape import stack_multiple
+from tqdm.notebook import tqdm_notebook
 
 # Import PhoREAL 'getAtlMeasuredSwath' tool
-sys.path.insert(1, 'C:/Users/albp/mangroves/icesat/PhoREAL-master/source_code')
+sys.path.insert(1, '../PhoREAL-master/source_code')
 import getAtlMeasuredSwath_auto
 
-def get_canopy_heights(atl03FileLocation = False, storePath = False, trackNum = 'gt1r', alongTrackRes = 10):
+def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, atl03FileLocation = False, storePath = False, trackNum = 'gt2r', alongTrackRes = 10):
     
-    # Only execute code if input ATL03.hf file and outpath declared
+    # Only execute code if input ATL03.h5 filepath and outpath declared
     if (atl03FileLocation and storePath):
+
+        # Create download directy if necessary
+        Path(atl03FileLocation).mkdir(parents=True, exist_ok=True)
 
         # Create storage directy if necessary
         Path(storePath).mkdir(parents=True, exist_ok=True)
 
+        # Download ICESat-2 files
+        if download == True:
+            region_a = ipx.Query(data_type, spatial_extent, date_range)
+            region_a.earthdata_login(username, email)
+            region_a.order_granules()
+            region_a.granules.orderIDs
+            region_a.download_granules(atl03FileLocation)
+        else:
+            print('Not downloading raw files from NSIDC.')
+            pass
+
         # Find available .h5 files for processing
         atl03Files = glob.glob(os.path.join(atl03FileLocation, f'*.h5'))
         # Print file names
-        print('Found {} ATL03 files.'.format(len(atl03Files)))
+        print('Found {} ATL03 file(s).'.format(len(atl03Files)))
 
+        # Process .h5 files with PhoREAL tool to convert to csv with return statistics
         for files in tqdm_notebook(atl03Files):
             getAtlMeasuredSwath_auto.getAtlMeasuredSwath(atl03FilePath = files, outFilePath = storePath, gtNum = trackNum, trimInfo = 'auto', createAtl03CsvFile = True)
         
@@ -31,10 +47,10 @@ def get_canopy_heights(atl03FileLocation = False, storePath = False, trackNum = 
 
         # Find available csv files for analysis
         csvFiles = glob.glob(os.path.join(storePath, f'*.csv'))
-        print('Located {} csv files for canopy heights estimation.'.format(len(csvFiles)))
+        print('Located {} csv file(s) for canopy heights estimation.'.format(len(csvFiles)))
 
         # Create storage directory for heights if necessary
-        csvPath = storePath+'canopy_estimates/'
+        csvPath = storePath+'/CANOPY_ESTIMATES/'
         Path(csvPath).mkdir(parents=True, exist_ok=True)
 
         # Confirm along-track resolution
@@ -43,13 +59,14 @@ def get_canopy_heights(atl03FileLocation = False, storePath = False, trackNum = 
         # Estimate ground and canopy returns from raw ATL03 data
         for csvs in tqdm_notebook(csvFiles):
 
+            # Obtain .h5 file name
             print('Processing: {}.'.format(csvs))
             file_name = csvs[-55:-4]
 
             # Load CSV file into dataframe
             df = pd.read_csv(csvs)
 
-            ## TODO: Need to sort out errorneous datasets.
+            # Sort out errorneous datasets. Done by locating dataframes with 'NaN' values.
             while True:
                 try:
                     nbins = int(((df['Along-Track (m)'].max()) - (df['Along-Track (m)'].min()))/alongTrackRes)

@@ -1,3 +1,19 @@
+"""
+Script to perform basic manipulation to obtain canopy heights from raw ATL03
+returns.
+
+Copyright 2021 Alexander Boest-Petersen
+
+This package is free software; the copyright holder gives unlimited
+permission to copy and/or distribute, with or without modification, as
+long as this notice is preserved.
+
+Author(s):
+    Alexander Boest-Petersen
+    
+Date: November 8, 2021
+"""
+
 import glob
 import os
 import sys
@@ -9,8 +25,8 @@ from pandas.core.reshape.reshape import stack_multiple
 from tqdm.notebook import tqdm_notebook
 
 # Import PhoREAL 'getAtlMeasuredSwath' tool
-sys.path.insert(1, '../PhoREAL-master/source_code')
-import getAtlMeasuredSwath_auto
+sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL-master/source_code/')
+from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
 def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, atl03FileLocation = False, storePath = False, trackNum = 'gt2r', alongTrackRes = 10):
     
@@ -41,12 +57,12 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
 
         # Process .h5 files with PhoREAL tool to convert to csv with return statistics
         for files in tqdm_notebook(atl03Files):
-            getAtlMeasuredSwath_auto.getAtlMeasuredSwath(atl03FilePath = files, outFilePath = storePath, gtNum = trackNum, trimInfo = 'auto', createAtl03CsvFile = True)
+            getAtlMeasuredSwath(atl03FilePath = files, outFilePath = storePath, gtNum = trackNum, trimInfo = 'auto', createAtl03CsvFile = True)
         
         print('Finished converting to csv.')
 
         # Find available csv files for analysis
-        csvFiles = glob.glob(os.path.join(storePath, f'*.csv'))
+        csvFiles = glob.glob(os.path.join(storePath, f'*'+trackNum+'.csv'))
         print('Located {} csv file(s) for canopy heights estimation.'.format(len(csvFiles)))
 
         # Create storage directory for heights if necessary
@@ -55,6 +71,9 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
 
         # Confirm along-track resolution
         print('Canopy heights will be generated at a resolution of {} meters along-track.'.format(alongTrackRes))
+
+        # Create empty 'merged' dataframe to concat other dataframes to
+        merged_df = pd.read_csv(csvFiles[0], nrows=0)
 
         # Estimate ground and canopy returns from raw ATL03 data
         for csvs in tqdm_notebook(csvFiles):
@@ -66,7 +85,7 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
             # Load CSV file into dataframe
             df = pd.read_csv(csvs)
 
-            # Sort out errorneous datasets. Done by locating dataframes with 'NaN' values.
+            # Sort out errorneous datasets by locating dataframes with 'NaN' values.
             while True:
                 try:
                     nbins = int(((df['Along-Track (m)'].max()) - (df['Along-Track (m)'].min()))/alongTrackRes)
@@ -116,14 +135,28 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
                     # Remove rows with no coordinates
                     d_mean.dropna(subset=['Longitude (deg)_mean'], inplace=True)
 
+                    # Concat final dataframe to merged set
+                    merged_df = pd.concat([merged_df, d_mean])
+                    print('Merged csv has {} entrys.'.format(len(merged_df)))
+
                     # Save results to csv
-                    d_mean.to_csv(csvPath+file_name+'_canopy.csv', sep=',')
-                    print('Derived canopy heights and saved {} to csv.'.format(csvs))
+                    #d_mean.to_csv(csvPath+file_name+'_canopy.csv', sep=',')
+                    #print('Derived canopy heights and saved {} to csv.'.format(csvs))
                     break
                 
                 except ValueError:
                     print('Erroneous data, skipping.')
                     break
+
+        # Drop empty columns
+        merged_df.drop(merged_df.columns[[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]], axis=1, inplace=True)
+
+        # Rename Lat & Lon columns for GEE asset ingestion
+        merged_df.rename(columns={'Latitude (deg)_mean':'latitude', 'Longitude (deg)_mean':'longitude'}, inplace=True)
+        
+        # Save merged dataframe as csv
+        merged_df.to_csv(csvPath+trackNum+'_'+file_name+'_canopy_merged.csv', sep=',', index=False)
+        print('Derived and saved merged canopy heights.')
 
     else:
         print('ERROR: No .h5 files found in specified location and/or incorrect output directory specified.')

@@ -1,19 +1,3 @@
-"""
-Script to perform basic manipulation to obtain canopy heights from raw ATL03
-returns.
-
-Copyright 2021 Alexander Boest-Petersen
-
-This package is free software; the copyright holder gives unlimited
-permission to copy and/or distribute, with or without modification, as
-long as this notice is preserved.
-
-Author(s):
-    Alexander Boest-Petersen
-    
-Date: November 8, 2021
-"""
-
 import glob
 import os
 import sys
@@ -159,4 +143,14 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         print('Derived and saved merged canopy heights.')
 
     else:
-        print('ERROR: No .h5 files found in specified location and/or incorrect output directory specified.')
+        print('ERROR: No .h5 files found in specified location and/or no output directory specified.')
+
+
+# Tool to clip GMW 2016 dataset to area of interest and generate files for GEE processing
+# GMW_2016 .shp files can be found here: https://data.unep-wcmc.org/datasets/45
+def known_mangroves(gmw2016_path = False, bbox = False):
+
+    if (gmw2016_path and bbox):
+        print('Done')
+    else:
+        print('ERROR: No .shp files found in specified location and/or incorrect directory specified.')

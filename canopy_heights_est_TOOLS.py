@@ -3,6 +3,7 @@ import os
 import sys
 from pathlib import Path
 
+import geopandas as gpd
 import icepyx as ipx
 import pandas as pd
 from pandas.core.reshape.reshape import stack_multiple
@@ -12,6 +13,9 @@ from tqdm.notebook import tqdm_notebook
 sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL-master/source_code/')
 from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
+'''
+DEFINE WHAT THIS TOOL DOES.
+'''
 def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, atl03FileLocation = False, storePath = False, trackNum = 'gt2r', alongTrackRes = 10):
     
     # Only execute code if input ATL03.h5 filepath and outpath declared
@@ -145,12 +149,23 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
     else:
         print('ERROR: No .h5 files found in specified location and/or no output directory specified.')
 
+'''
+Tool to clip GMW 2016 dataset to area of interest and generate files for GEE processing.
+GMW_2016 .shp files can be found here:
+    https://data.unep-wcmc.org/datasets/45
 
-# Tool to clip GMW 2016 dataset to area of interest and generate files for GEE processing
-# GMW_2016 .shp files can be found here: https://data.unep-wcmc.org/datasets/45
-def known_mangroves(gmw2016_path = False, bbox = False):
+This tool generates 3 shapefiles:
+    1. Areas of known mangroves (as per GMW) within the designated aoi.
+    2. Areas that are not mangroves within the designated aoi.
+    3. Combined areas of known and non mangroves for designated aoi. (remove?
+'''
+def gmw_mangroves(gmw2016_path = False, spatial_extent = False):
 
-    if (gmw2016_path and bbox):
-        print('Done')
+    if (gmw2016_path and spatial_extent):
+        
+        gmw_2016 = gpd.read_file(gmw2016_path)
+
+        aoi = gpd.read_file(spatial_extent)
+
     else:
         print('ERROR: No .shp files found in specified location and/or incorrect directory specified.')

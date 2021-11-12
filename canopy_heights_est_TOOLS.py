@@ -1,6 +1,12 @@
+'''
+Author: Alexander Boest-Petersen, 2021
+'''
+
 import glob
 import os
 import sys
+import urllib
+import zipfile
 from pathlib import Path
 
 import geopandas as gpd
@@ -38,7 +44,7 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
             print('Not downloading raw files from NSIDC.')
             pass
 
-        # Find available .h5 files for processing
+        # Locate available .h5 files for processing
         atl03Files = glob.glob(os.path.join(atl03FileLocation, f'*.h5'))
         # Print file names
         print('Found {} ATL03 file(s).'.format(len(atl03Files)))
@@ -49,7 +55,7 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         
         print('Finished converting to csv.')
 
-        # Find available csv files for analysis
+        # Locate available csv files for analysis
         csvFiles = glob.glob(os.path.join(storePath, f'*'+trackNum+'.csv'))
         print('Located {} csv file(s) for canopy heights estimation.'.format(len(csvFiles)))
 
@@ -157,15 +163,73 @@ GMW_2016 .shp files can be found here:
 This tool generates 3 shapefiles:
     1. Areas of known mangroves (as per GMW) within the designated aoi.
     2. Areas that are not mangroves within the designated aoi.
-    3. Combined areas of known and non mangroves for designated aoi. (remove?
+    3. Combined areas of known and non mangroves for designated aoi. (remove?)
 '''
-def gmw_mangroves(gmw2016_path = False, spatial_extent = False):
 
-    if (gmw2016_path and spatial_extent):
-        
-        gmw_2016 = gpd.read_file(gmw2016_path)
+'''
+TODO: Check if study_area_name is valid (no spaces, etc.)
+'''
+def gmw_mangroves(gmw2016_path = False, spatial_extent = False, study_area_name = False):
 
+    if (gmw2016_path and spatial_extent and study_area_name):
+            
+        # Locate available .shp files for processing
+        gmw_polygons = glob.glob(os.path.join(gmw2016_path, f'*GMW_2016_v2.shp'))
+
+        # Obtain directory for file consumption
+        directory = os.getcwd()
+
+        # Download & unzip shapefiles if none are found
+        while True:
+            if len(gmw_polygons) == 0:
+                url = 'https://wcmc.io/GMW_2016'
+                file = 'GMW_001_GlobalMangroveWatch_2016.zip'
+                print('No GMW shapefiles found. Downloading 2016 shapefiles...')
+                
+                # Download GMW 2016 shapefiles
+                urllib.request.urlretrieve(url, gmw2016_path+file)
+
+                # Unzip compressed files
+                with zipfile.ZipFile(gmw2016_path+file,'r') as zip_ref:
+                    zip_ref.extractall(gmw2016_path)
+                
+                # Set file path to new location
+                gmw2016_path = gmw2016_path + '/GMW_001_GlobalMangroveWatch_2016/01_Data'
+
+                # Locate newly downloaded files
+                gmw_polygons = glob.glob(os.path.join(gmw2016_path, f'*GMW_2016_v2.shp'))
+
+                # Load shapefile into geopandas dataframe
+                gmw_polygons = gpd.read_file(directory+'/'+gmw_polygons[0])
+                print('Downloaded GMW 2016 shapefiles that can be found at: {}'.format(gmw_polygons))
+                break
+            else:
+                # Load shapefile into geopandas dataframe
+                gmw_polygons = gpd.read_file(directory+'/'+gmw_polygons[0])
+                print('Located shapefile.')
+                break
+
+
+        # Read AOI shapefile
         aoi = gpd.read_file(spatial_extent)
+
+        # Define special characters for checking storage location
+        special_characters = '"[@_!#$%^&*()<>?/\|}{~:]"'
+
+        # Check nomenclature of study area name (no spaces allowed, may not start with a number)
+        while True:
+            if ' ' in study_area_name:
+                print('Space found in study_area_name variable. Change this.')
+                sys.exit()
+            if study_area_name[0].isdigit:
+                print('First character of study_area_name is a number. Change this.')
+                sys.exit()
+            if any(c in special_characters for c in study_area_name):
+                print('Special character found in study_area_name. Change this.')
+                sys.exit()
+            else:
+                print('No spaces found.')
+                break
 
     else:
         print('ERROR: No .shp files found in specified location and/or incorrect directory specified.')

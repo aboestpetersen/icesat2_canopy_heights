@@ -20,20 +20,38 @@ sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy
 from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
 '''
-DEFINE WHAT THIS TOOL DOES.
+Download ICESat-2 Data from NSIDC.
 '''
-def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, atl03FileLocation = False, storePath = False, trackNum = 'gt2r', alongTrackRes = 10):
+def download_icesat(data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, output_location = False):
+    # Only execute code if input ATL03.h5 filepath and outpath declared
+    if (output_location):
+
+        # Create download directory if necessary
+        Path(output_location).mkdir(parents=True, exist_ok=True)
+
+        # Download ICESat-2 files
+        region_a = ipx.Query(data_type, spatial_extent, date_range)
+        region_a.earthdata_login(username, email)
+        region_a.order_granules()
+        region_a.granules.orderIDs
+        region_a.download_granules(output_location)
+        print('Done.')
+
+    else:
+        print('No storage directory given.')
+
+'''
+TODO: DEFINE WHAT THIS TOOL DOES.
+'''
+def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, atl03FileLocation = False, trackNum = ['gt1l', 'gt2l', 'gt3l', 'gt1r', 'gt2r', 'gt3r'], alongTrackRes = 10):
     
     # Only execute code if input ATL03.h5 filepath and outpath declared
-    if (atl03FileLocation and storePath):
+    if (atl03FileLocation):
 
         # Create download directory if necessary
         Path(atl03FileLocation).mkdir(parents=True, exist_ok=True)
 
-        # Create storage directory if necessary
-        Path(storePath).mkdir(parents=True, exist_ok=True)
-
-        # Download ICESat-2 files
+        # Download ICESat-2 files if requested
         if download == True:
             region_a = ipx.Query(data_type, spatial_extent, date_range)
             region_a.earthdata_login(username, email)
@@ -49,18 +67,24 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         # Print file names
         print('Found {} ATL03 file(s).'.format(len(atl03Files)))
 
+        # Create storage location for converted files
+        output_location = atl03FileLocation + 'csv/'
+        Path(output_location).mkdir(parents=True, exist_ok=True)
+
         # Process .h5 files with PhoREAL tool to convert to csv with return statistics
         for files in tqdm_notebook(atl03Files):
-            getAtlMeasuredSwath(atl03FilePath = files, outFilePath = storePath, gtNum = trackNum, trimInfo = 'auto', createAtl03CsvFile = True)
+            for track in trackNum:
+                getAtlMeasuredSwath(atl03FilePath = files, outFilePath = output_location, gtNum = track, trimInfo = 'auto', createAtl03CsvFile = True)
         
         print('Finished converting to csv.')
 
         # Locate available csv files for analysis
-        csvFiles = glob.glob(os.path.join(storePath, f'*'+trackNum+'.csv'))
+        #csvFiles = glob.glob(os.path.join(storePath, f'*'+trackNum+'.csv')) # Original
+        csvFiles = glob.glob(os.path.join(output_location, f'*.csv'))
         print('Located {} csv file(s) for canopy heights estimation.'.format(len(csvFiles)))
 
         # Create storage directory for heights if necessary
-        csvPath = storePath+'/CANOPY_ESTIMATES/'
+        csvPath = output_location+'/CANOPY_ESTIMATES/'
         Path(csvPath).mkdir(parents=True, exist_ok=True)
 
         # Confirm along-track resolution
@@ -74,7 +98,6 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
 
             # Obtain .h5 file name
             print('Processing: {}.'.format(csvs))
-            file_name = csvs[-55:-4]
 
             # Load CSV file into dataframe
             df = pd.read_csv(csvs)
@@ -116,7 +139,6 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
                     df_canopy['ground_est'] = df_canopy.groupby('elev_bin')['Height (m MSL)'].transform('min')
 
                     # Aggregate columns by bin and mean value
-                    # Group by bins and calculate mean value of each column for each bin
                     d_mean = df_canopy.groupby('canopy_bin').agg(['mean'])
                     # Flatten columns
                     d_mean.columns = d_mean.columns.map('_'.join)
@@ -129,13 +151,15 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
                     # Remove rows with no coordinates
                     d_mean.dropna(subset=['Longitude (deg)_mean'], inplace=True)
 
+                    # Add track and year columns
+                    year = csvs[-39:-35]
+                    trackID = csvs[-8:-4]
+                    d_mean['year'] = year
+                    d_mean['track'] = trackID
+                
                     # Concat final dataframe to merged set
                     merged_df = pd.concat([merged_df, d_mean])
                     print('Merged csv has {} entrys.'.format(len(merged_df)))
-
-                    # Save results to csv
-                    #d_mean.to_csv(csvPath+file_name+'_canopy.csv', sep=',')
-                    #print('Derived canopy heights and saved {} to csv.'.format(csvs))
                     break
                 
                 except ValueError:
@@ -149,7 +173,7 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         merged_df.rename(columns={'Latitude (deg)_mean':'latitude', 'Longitude (deg)_mean':'longitude'}, inplace=True)
         
         # Save merged dataframe as csv
-        merged_df.to_csv(csvPath+trackNum+'_'+file_name+'_canopy_merged.csv', sep=',', index=False)
+        merged_df.to_csv(csvPath+'canopy_merged.csv', sep=',', index=False)
         print('Derived and saved merged canopy heights.')
 
     else:
@@ -209,10 +233,14 @@ def gmw_mangroves(gmw2016_path = False, spatial_extent = False, study_area_name 
                 print('Located shapefile.')
                 break
 
-
         # Read AOI shapefile
         aoi = gpd.read_file(spatial_extent)
 
+        # Clip GMW shapefiles by aoi area
+        gmw_clipped = gmw_polygons.clip(aoi)
+        gmw_clipped.head()
+
+        '''
         # Define special characters for checking storage location
         special_characters = '"[@_!#$%^&*()<>?/\|}{~:]"'
 
@@ -221,15 +249,15 @@ def gmw_mangroves(gmw2016_path = False, spatial_extent = False, study_area_name 
             if ' ' in study_area_name:
                 print('Space found in study_area_name variable. Change this.')
                 sys.exit()
-            if study_area_name[0].isdigit:
+            elif str(study_area_name[0]).isdigit:
                 print('First character of study_area_name is a number. Change this.')
                 sys.exit()
-            if any(c in special_characters for c in study_area_name):
+            elif any(c in special_characters for c in study_area_name):
                 print('Special character found in study_area_name. Change this.')
                 sys.exit()
             else:
                 print('No spaces found.')
                 break
-
+        '''
     else:
         print('ERROR: No .shp files found in specified location and/or incorrect directory specified.')

@@ -20,7 +20,7 @@ sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy
 from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
 '''
-Download ICESat-2 Data from NSIDC.
+Download ICESat-2 Data from NSIDC API.
 '''
 def download_icesat(data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, output_location = False):
     # Only execute code if input ATL03.h5 filepath and outpath declared
@@ -42,14 +42,18 @@ def download_icesat(data_type = 'ATL03', spatial_extent = False, date_range = Fa
 
 '''
 TODO: DEFINE WHAT THIS TOOL DOES.
+TODO: Analyze potential spatial autocorrelation.
 '''
-def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, atl03FileLocation = False, trackNum = ['gt1l', 'gt2l', 'gt3l', 'gt1r', 'gt2r', 'gt3r'], alongTrackRes = 10):
+def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, working_directory = False, generate_csv = True, trackNum = ['gt1l', 'gt2l', 'gt3l', 'gt1r', 'gt2r', 'gt3r'], alongTrackRes = 10, autocorrelation = False, autocorrelation_dist=250):
     
     # Only execute code if input ATL03.h5 filepath and outpath declared
-    if (atl03FileLocation):
+    if (working_directory):
 
         # Create download directory if necessary
-        Path(atl03FileLocation).mkdir(parents=True, exist_ok=True)
+        Path(working_directory).mkdir(parents=True, exist_ok=True)
+
+        h5_storage = working_directory + '/atl'
+        Path(h5_storage).mkdir(parents=True, exist_ok=True)
 
         # Download ICESat-2 files if requested
         if download == True:
@@ -57,35 +61,33 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
             region_a.earthdata_login(username, email)
             region_a.order_granules()
             region_a.granules.orderIDs
-            region_a.download_granules(atl03FileLocation)
+            region_a.download_granules(h5_storage)
         else:
             print('Not downloading raw files from NSIDC.')
             pass
 
         # Locate available .h5 files for processing
-        atl03Files = glob.glob(os.path.join(atl03FileLocation, f'*.h5'))
+        atl03Files = glob.glob(os.path.join(h5_storage, f'*.h5'))
         # Print file names
         print('Found {} ATL03 file(s).'.format(len(atl03Files)))
 
         # Create storage location for converted files
-        output_location = atl03FileLocation + 'csv/'
+        output_location = working_directory + 'csv/'
         Path(output_location).mkdir(parents=True, exist_ok=True)
 
-        # Process .h5 files with PhoREAL tool to convert to csv with return statistics
-        for files in tqdm_notebook(atl03Files):
-            for track in trackNum:
-                getAtlMeasuredSwath(atl03FilePath = files, outFilePath = output_location, gtNum = track, trimInfo = 'auto', createAtl03CsvFile = True)
-        
-        print('Finished converting to csv.')
+        # Process .h5 files with PhoREAL tool to convert to csv with return statistics if requested
+        if generate_csv == True:
+            for files in tqdm_notebook(atl03Files):
+                for track in trackNum:
+                    getAtlMeasuredSwath(atl03FilePath = files, outFilePath = output_location, gtNum = track, trimInfo = 'auto', createAtl03CsvFile = True)
+            print('Finished converting to csv.')
+        else:
+            print('Not generating .csv files from .h5 files.')
+            pass
 
         # Locate available csv files for analysis
-        #csvFiles = glob.glob(os.path.join(storePath, f'*'+trackNum+'.csv')) # Original
         csvFiles = glob.glob(os.path.join(output_location, f'*.csv'))
         print('Located {} csv file(s) for canopy heights estimation.'.format(len(csvFiles)))
-
-        # Create storage directory for heights if necessary
-        csvPath = output_location+'/CANOPY_ESTIMATES/'
-        Path(csvPath).mkdir(parents=True, exist_ok=True)
 
         # Confirm along-track resolution
         print('Canopy heights will be generated at a resolution of {} meters along-track.'.format(alongTrackRes))
@@ -166,12 +168,26 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
                     print('Erroneous data, skipping.')
                     break
 
-        # Drop empty columns
-        merged_df.drop(merged_df.columns[[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]], axis=1, inplace=True)
+        # Drop empty/unnecessary columns
+        merged_df.drop(merged_df.iloc[:,0:22], axis=1, inplace=True)
+        merged_df.drop(merged_df.iloc[:,3:15], axis=1, inplace=True)
 
         # Rename Lat & Lon columns for GEE asset ingestion
         merged_df.rename(columns={'Latitude (deg)_mean':'latitude', 'Longitude (deg)_mean':'longitude'}, inplace=True)
-        
+
+        # Remove points that are too close to each other (autocorrelation) if toggled
+        if autocorrelation == True:
+            print('# of ICESat-2 points for spatial autocorrelation consideration: {}.'.format(len(merged_df)))
+            gdf = gpd.GeoDataFrame(merged_df, geometry=gpd.points_from_xy(merged_df.longitude, merged_df.latitude))
+            gdf_buffer = gdf.geometry.buffer(autocorrelation_dist)
+        else:
+            print('Not factoring spatial autocorrelation for canopy heights.')
+            pass
+
+        # Create storage directory for derived heights if necessary
+        csvPath = output_location+'/canopy_estimates/'
+        Path(csvPath).mkdir(parents=True, exist_ok=True)
+
         # Save merged dataframe as csv
         merged_df.to_csv(csvPath+'canopy_merged.csv', sep=',', index=False)
         print('Derived and saved merged canopy heights.')
@@ -180,17 +196,13 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         print('ERROR: No .h5 files found in specified location and/or no output directory specified.')
 
 '''
-Tool to clip GMW 2016 dataset to area of interest and generate files for GEE processing.
-GMW_2016 .shp files can be found here:
-    https://data.unep-wcmc.org/datasets/45
+Tool to clip GMW 2016 dataset to area of interest and generate files for GEE processing. GMW_2016 .shp files can be found here: https://data.unep-wcmc.org/datasets/45
 
 This tool generates 3 shapefiles:
     1. Areas of known mangroves (as per GMW) within the designated aoi.
     2. Areas that are not mangroves within the designated aoi.
     3. Combined areas of known and non mangroves for designated aoi. (remove?)
-'''
 
-'''
 TODO: Check if study_area_name is valid (no spaces, etc.)
 '''
 def gmw_mangroves(gmw2016_path = False, spatial_extent = False, study_area_name = False):

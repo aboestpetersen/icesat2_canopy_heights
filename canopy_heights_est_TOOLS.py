@@ -57,11 +57,7 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
 
         # Download ICESat-2 files if requested
         if download == True:
-            region_a = ipx.Query(data_type, spatial_extent, date_range)
-            region_a.earthdata_login(username, email)
-            region_a.order_granules()
-            region_a.granules.orderIDs
-            region_a.download_granules(h5_storage)
+            download_icesat(data_type=data_type, spatial_extent=spatial_extent, date_range=date_range, username=username, email=email, output_location=h5_storage)
         else:
             print('Not downloading raw files from NSIDC.')
             pass
@@ -75,11 +71,16 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         output_location = working_directory + 'csv/'
         Path(output_location).mkdir(parents=True, exist_ok=True)
 
-        # Process .h5 files with PhoREAL tool to convert to csv with return statistics if requested
+        # Process .h5 files with PhoREAL tool to derive stats
         if generate_csv == True:
             for files in tqdm_notebook(atl03Files):
                 for track in trackNum:
-                    getAtlMeasuredSwath(atl03FilePath = files, outFilePath = output_location, gtNum = track, trimInfo = 'auto', createAtl03CsvFile = True)
+                    while True:
+                        try:
+                            getAtlMeasuredSwath(atl03FilePath = files, outFilePath = output_location, gtNum = track, trimInfo = 'auto', createAtl03CsvFile = True)
+                            break
+                        except ValueError:
+                            break
             print('Finished converting to csv.')
         else:
             print('Not generating .csv files from .h5 files.')
@@ -198,11 +199,16 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
 '''
 Tool to clip GMW 2016 dataset to area of interest and generate files for GEE processing. GMW_2016 .shp files can be found here: https://data.unep-wcmc.org/datasets/45
 
-This tool generates 3 shapefiles:
+This tool generates a shapefile with the following properties:
     1. Areas of known mangroves (as per GMW) within the designated aoi.
     2. Areas that are not mangroves within the designated aoi.
-    3. Combined areas of known and non mangroves for designated aoi. (remove?)
 
+TODO: Create bbox from upper left & upper right coords
+TODO: Set 'pxlval' attribute of bbox == 0
+TODO: Build spatial indexes for GMW_2016 (REMOVE?)
+TODO: Clip GMW_2016 to bbox
+TODO: Fix GMW_2016 geometries
+TODO: Union bbox and clipped GMW_2016 together
 TODO: Check if study_area_name is valid (no spaces, etc.)
 '''
 def gmw_mangroves(gmw2016_path = False, spatial_extent = False, study_area_name = False):

@@ -4,19 +4,23 @@ Author: Alexander Boest-Petersen, 2021
 
 import glob
 import os
+import shutil
 import sys
 import urllib
 import zipfile
+from getpass import getpass
 from pathlib import Path
 
 import geopandas as gpd
 import icepyx as ipx
 import pandas as pd
+import requests
 from pandas.core.reshape.reshape import stack_multiple
 from tqdm.notebook import tqdm_notebook
 
 # Import PhoREAL 'getAtlMeasuredSwath' tool
-sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL-master/source_code/')
+sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL/source_code/')
+#import PhoREAL.source_code.getAtlMeasuredSwath_auto
 from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
 '''
@@ -43,6 +47,8 @@ def download_icesat(data_type = 'ATL03', spatial_extent = False, date_range = Fa
 '''
 TODO: DEFINE WHAT THIS TOOL DOES.
 TODO: Analyze potential spatial autocorrelation.
+TODO: Handle duplicate rows appropriately.
+TODO: Append dataframes to csv to handle memory?
 '''
 def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = False, date_range = False, username = False, email = False, working_directory = False, generate_csv = True, trackNum = ['gt1l', 'gt2l', 'gt3l', 'gt1r', 'gt2r', 'gt3r'], alongTrackRes = 10, autocorrelation = False, autocorrelation_dist=250):
     
@@ -189,6 +195,9 @@ def get_canopy_heights(download = False, data_type = 'ATL03', spatial_extent = F
         csvPath = output_location+'/canopy_estimates/'
         Path(csvPath).mkdir(parents=True, exist_ok=True)
 
+        # Drop duplicate rows
+        merged_df.drop_duplicates()
+
         # Save merged dataframe as csv
         merged_df.to_csv(csvPath+'canopy_merged.csv', sep=',', index=False)
         print('Derived and saved merged canopy heights.')
@@ -209,6 +218,7 @@ TODO: Build spatial indexes for GMW_2016 (REMOVE?)
 TODO: Clip GMW_2016 to bbox
 TODO: Fix GMW_2016 geometries
 TODO: Union bbox and clipped GMW_2016 together
+TODO: Simplify geometry
 TODO: Check if study_area_name is valid (no spaces, etc.)
 '''
 def gmw_mangroves(gmw2016_path = False, spatial_extent = False, study_area_name = False):

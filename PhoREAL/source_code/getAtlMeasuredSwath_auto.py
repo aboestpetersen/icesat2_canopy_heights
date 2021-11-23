@@ -25,7 +25,8 @@ from icesatIO import (readAtl03H5, readAtl08H5,
                       writeLas, writeKml, writeArrayToCSV, writeLog,
                       GtToBeamNum, GtToBeamSW,
                       atlRotationStruct, atl03Struct, atl08Struct)
-from icesatUtils import (getNameParts, getAtl08Mapping, getLatLon2UTM, 
+from icesatUtils import (getNameParts,
+                         getAtl08Mapping, getLatLon2UTM, 
                          getCoordRotFwd, getClosest, interp_vals)
 
      

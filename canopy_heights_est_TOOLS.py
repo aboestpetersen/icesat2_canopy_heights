@@ -7,19 +7,17 @@ TODO: Clean up imports.
 
 import glob
 import os
-#import shutil
 import sys
 import urllib
 import zipfile
 from datetime import datetime
-#from getpass import getpass
 from pathlib import Path
 
 import geopandas as gpd
 import icepyx as ipx
 import pandas as pd
-#import requests
 from pandas.core.reshape.reshape import stack_multiple
+from shapely.validation import make_valid
 from tqdm.notebook import tqdm_notebook
 
 # Import PhoREAL 'getAtlMeasuredSwath' tool
@@ -70,9 +68,9 @@ autocorrelation_dist=250):
     '''
     Description:
         get_canopy_heights is a tool that allows users to query, download
-        preprocess, and obtain estimated canopy heights from NASA's ATLAS ICESat-2
-        ATL03 raw photon return data at a user defined resolution along the track of
-        the dataset in meters.
+        preprocess, and obtain estimated canopy heights from NASA's ATLAS
+        ICESat-2 ATL03 raw photon return data at a user defined resolution
+        along the track of the dataset in meters.
     Parameters:
         download - Boolean to download raw .h5 files from NSIDC.
         data_type - Which dataset to download from NSIDC.
@@ -82,14 +80,16 @@ autocorrelation_dist=250):
         email - NASA EarthData email.
         working_directory - Location for file storage.
         generate_csv - Process .h5 files with PhoREAL tool.
-        track_num - Select which ATL03 tracks to derive canopy heights off of.
+        track_num - Select which ATL03 tracks to derive canopy heights from,
+            all by default.
         along_track_res - Resolution at which to derive canopy heights (meters).
         autocorrelation - Remove points located within a buffer of other points.
-        autocorrelation_dist - Remove data within x distance of each other (meters).
+        autocorrelation_dist - Remove data within x meters of each other.
 
-    TODO: Spatial autocorrelation.
+    TODO: Spatial autocorrelation?.
     TODO: Handle duplicate rows appropriately.
     TODO: Append dataframes to csv to handle memory?
+        Sundarban 2019-01-01 to 2019-07-31, 117 csv files takes 15:48 to process.
     '''
     
     # Only execute code if input ATL03.h5 filepath and outpath declared
@@ -97,12 +97,13 @@ autocorrelation_dist=250):
 
         # Create download directory if necessary
         Path(working_directory).mkdir(parents=True, exist_ok=True)
-
         h5_storage = working_directory + '/atl'
         Path(h5_storage).mkdir(parents=True, exist_ok=True)
 
         # Download ICESat-2 files if requested
         if download == True:
+            print('Downloading data from {} to {}.'.format(date_range[0],
+            date_range[1]))
             download_icesat(data_type=data_type, spatial_extent=spatial_extent, 
             date_range=date_range, username=username, email=email, 
             output_location=h5_storage)
@@ -119,7 +120,7 @@ autocorrelation_dist=250):
             # Locate available .h5 files for processing
             atl03Files = glob.glob(os.path.join(h5_storage, f'*.h5'))
             # Print file names
-            print('Located {} {} file(s).'.format(len(atl03Files, data_type)))
+            print('Located {} {} file(s).'.format(len(atl03Files), data_type))
             for files in tqdm_notebook(atl03Files):
                 for track in track_num:
                     while True:
@@ -205,6 +206,7 @@ autocorrelation_dist=250):
                     # Calculate height of canopy above ground
                     d_mean['canopy_height_est'] = (d_mean['toc_est_mean'] - 
                     d_mean['ground_est_mean'])
+                    print('Canopy returns estimated for {}.'.format(csvs))
 
                     # Remove rows with no coordinates
                     d_mean.dropna(subset=['Longitude (deg)_mean'], inplace=True)
@@ -254,8 +256,8 @@ autocorrelation_dist=250):
         print('ERROR: No .h5 files found and/or no output directory specified.')
 
 '''WORK IN PROGRESS'''
-def gmw_mangroves(gmw2016_path = False, spatial_extent = False, 
-study_area_name = False):
+def gmw_mangroves(gmw2016_path=False, spatial_extent=False,
+study_area_name=False, central_coord=False, buf_dist=10000, fix_geom=True):
     '''
     Description:
         Tool to clip GMW 2016 dataset to area of interest and generate files for GEE
@@ -269,23 +271,23 @@ study_area_name = False):
         gmw2016_path - Directory with GMW 2016 shapefile.
         spatial_extent - Shapefile containing bbox of study area.
         study_area_name - Name of study area for storage purposes.
+        central_coord = Lat/Long of center of study area to build buffer.
+        buf_dist = Size of buffer, default 10000 meters (10km).
 
-    TODO: Create bbox from upper left & upper right coords
+    TODO: Create bbox from upper left & upper right coords?
     TODO: Set 'pxlval' attribute of bbox == 0
-    TODO: Build spatial indexes for GMW_2016 (REMOVE?)
-    TODO: Clip GMW_2016 to bbox
     TODO: Fix GMW_2016 geometries
+    TODO: Clip GMW_2016 to bbox
     TODO: Union bbox and clipped GMW_2016 together
     TODO: Simplify geometry
     TODO: Check if study_area_name is valid (no spaces, etc.)
     '''
 
-    if (gmw2016_path and spatial_extent and study_area_name):
-            
+    if (gmw2016_path and central_coord):
         # Locate available .shp files for processing
-        gmw_polygons = glob.glob(os.path.join(gmw2016_path, f'*GMW_2016_v2.shp'))
+        gmw_polygons = glob.glob(os.path.join(f'gmw/GMW_001_GlobalMangroveWatch_2016/01_Data\*GMW_2016_v2.shp'))
 
-        # Obtain directory for file consumption
+        # Obtain directory for file usage and storage
         directory = os.getcwd()
 
         # Download & unzip shapefiles if none are found
@@ -310,22 +312,63 @@ study_area_name = False):
                 f'*GMW_2016_v2.shp'))
 
                 # Load shapefile into geopandas dataframe
-                gmw_polygons = gpd.read_file(directory+'/'+gmw_polygons[0])
+                gmw_polygons = gpd.read_file(gmw_polygons[0])
                 print('Downloaded GMW 2016 shapefiles that can be found at: {}'.
-                format(gmw_polygons))
+                format(gmw2016_path))
                 break
             else:
+                print('Located mangroves shapefile. Loading into geodataframe now...')
                 # Load shapefile into geopandas dataframe
                 gmw_polygons = gpd.read_file(directory+'/'+gmw_polygons[0])
-                print('Located shapefile.')
+                print('Loaded mangroves shapefile.')
                 break
 
-        # Read AOI shapefile
-        aoi = gpd.read_file(spatial_extent)
+        # Build square buffer around central point of no aoi shapefile provided.
+        if spatial_extent == False:
+            print('No aoi file provided, building aoi shapefile {} meters around {}.'.format(buf_dist, central_coord))
+
+            # Create dataframe for geopandas ingestion
+            df = pd.DataFrame({'Latitude': [central_coord[0]],
+            'Longitude': [central_coord[1]]})
+
+            # Load coordinates into geodataframe
+            gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
+
+            # Buffer the coordinate
+            # Note join_style: round = 1, mitre = 2, bevel = 3
+            # Note cap_style: round = 1, flat = 2, square = 3
+            gdf = gdf.buffer(buf_dist, join_style=2, cap_style=3)
+
+            # Ask user for name of study area for storage location/creation
+            folder_name = input('Name of study area for folder creation...')
+            aoi_path = directory + '/' + folder_name + '/shapefiles/'
+            Path(aoi_path).mkdir(parents=True, exist_ok=True)
+
+            # Save to file for future use
+            gdf.to_file(aoi_path + 'aoi.shp')
+            print('AOI shapefile created and saved.')
+        else:
+            # Read AOI shapefile
+            gdf = gpd.read_file(spatial_extent)
+            print('Loaded provided aoi shapefile.')
+
+        # Assign 'pxlval' to 0 for GEE use
+        #gdf['pxlval'] = 0
+
+        # Fix invalid GMW geometry is present
+        if fix_geom == True:
+            print('Fixing GMW geometry...')
+            gmw_polygons = gmw_polygons.buffer(0)
+            # Save to file for future use.
+            gmw_polygons.to_file(gmw2016_path+'gmw_fixed_geom.shp')
+        else:
+            print('Not fixing GMW geometry.')
+            pass
 
         # Clip GMW shapefiles by aoi area
-        gmw_clipped = gmw_polygons.clip(aoi)
-        gmw_clipped.head()
+        gdf_clipped = gmw_polygons.clip(gdf)
+        print('Clipped gdf...')
+        print(gdf_clipped.head())
 
         '''
         # Define special characters for checking storage location

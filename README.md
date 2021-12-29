@@ -76,4 +76,4 @@ Alexander Boest-Petersen - https://www.linkedin.com/in/alexanderboest-petersen/ 
 [issues-shield]: https://img.shields.io/github/issues/aboestpetersen/icesat2_canopy_heights?style=plastic
 [issues-url]: https://github.com/aboestpetersen/icesat2_canopy_heights/issues
 [license-shield]: https://img.shields.io/github/license/aboestpetersen/icesat2_canopy_heights?style=plastic
-[license-url]: https://github.com/aboestpetersen/icesat2_canopy_heights/blob/main/LICENSE.txt
+[license-url]: https://github.com/aboestpetersen/icesat2_canopy_heights/blob/main/LICENSE

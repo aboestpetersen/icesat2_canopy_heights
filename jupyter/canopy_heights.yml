@@ -1,4 +1,4 @@
-name: icesat2
+name: canopy_heights
 channels:
   - anaconda
   - conda-forge

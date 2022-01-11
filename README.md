@@ -11,7 +11,7 @@
 
 * [About the Project](#about-the-project)
   * [Built With](#built-with)
-* [Examples](#examples)
+* [Examples (Jupyter Notebooks)](#examples)
 * [Getting Started](#getting-started)
 * [Usage](#usage)
 * [Roadmap](#roadmap)

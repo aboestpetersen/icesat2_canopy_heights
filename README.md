@@ -11,7 +11,7 @@
 
 * [About the Project](#about-the-project)
   * [Built With](#built-with)
-* [Examples (Jupyter Notebooks)](#examples)
+* [Examples](#examples)
 * [Getting Started](#getting-started)
 * [Usage](#usage)
 * [Roadmap](#roadmap)
@@ -32,7 +32,9 @@ About this project.
 * [ICESat-2](https://icesat-2.gsfc.nasa.gov/)
 
 <!-- EXAMPLES -->
-## Examples (Jupyter Notebooks)
+## Examples
+
+Built with Jupyter Notebooks:
 * [Downloading ATL03 Data](https://github.com/aboestpetersen/icesat2_canopy_heights/blob/main/Examples/atl_download.ipynb)
 * Deriving Canopy Estimates (Work in Progress)
 

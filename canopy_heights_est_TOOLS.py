@@ -19,11 +19,6 @@ from pandas.core.reshape.reshape import stack_multiple
 from shapely.validation import make_valid
 from tqdm.notebook import tqdm_notebook
 
-# Import PhoREAL 'getAtlMeasuredSwath' tool (DEPRECATED?)
-#sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL/source_code/')
-#import PhoREAL.source_code.getAtlMeasuredSwath_auto
-#from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
-
 # Import PhoREAL 'getAtlMeasuredSwath' tool
 os.getcwd()
 os.chdir('PhoREAL/source_code/')

@@ -1,7 +1,6 @@
 '''
-Author: Alexander Boest-Petersen, 2021
-TODO: Documentation
-TODO: Build tests???
+Author: Alexander Boest-Petersen, 2022
+TODO: Documentation.
 TODO: Clean up imports.
 '''
 
@@ -20,9 +19,14 @@ from pandas.core.reshape.reshape import stack_multiple
 from shapely.validation import make_valid
 from tqdm.notebook import tqdm_notebook
 
-# Import PhoREAL 'getAtlMeasuredSwath' tool
-sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL/source_code/')
+# Import PhoREAL 'getAtlMeasuredSwath' tool (DEPRECATED?)
+#sys.path.insert(1, 'C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL/source_code/')
 #import PhoREAL.source_code.getAtlMeasuredSwath_auto
+#from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
+
+# Import PhoREAL 'getAtlMeasuredSwath' tool
+os.getcwd()
+os.chdir('PhoREAL/source_code/')
 from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
 # Get todays date for downloading data

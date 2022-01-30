@@ -30,6 +30,8 @@ About this project.
 ### Built With
 * [Python](https://www.python.org/)
 * [ICESat-2](https://icesat-2.gsfc.nasa.gov/)
+* [icepyx](https://icepyx.readthedocs.io/en/latest/)
+* [PhoREAL](https://github.com/icesat-2UT/PhoREAL)
 
 <!-- EXAMPLES -->
 ## Examples

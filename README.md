@@ -31,7 +31,7 @@ Workflow employed for this study:
 ![CanopyWorkflow](images/ground_detection.png "canopy_workflow")
 
 Comparison of resolutions (user can change output resolution):
-![ResolutionCompare](images/ground and canopy elev bins test.png "resolution_compare")
+![ResolutionCompare](images/res_compare "resolution_compare")
 
 ### Built With
 * [Python](https://www.python.org/)

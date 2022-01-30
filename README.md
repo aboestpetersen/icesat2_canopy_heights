@@ -36,7 +36,7 @@ About this project.
 
 Built with Jupyter Notebooks:
 * [Downloading ATL03 Data](https://github.com/aboestpetersen/icesat2_canopy_heights/blob/main/Examples/atl_download.ipynb)
-* Deriving Canopy Estimates (Work in Progress)
+* [Deriving Canopy Estimates](https://github.com/aboestpetersen/icesat2_canopy_heights/blob/main/Examples/derive_heights.ipynb)
 
 <!-- GETTING STARTED -->
 ## Getting Started

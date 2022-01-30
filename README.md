@@ -79,7 +79,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <!-- CONTACT -->
 ## Contact
-Alexander Boest-Petersen - https://www.linkedin.com/in/alexanderboest-petersen/ - aboest20@student.aau.dk
+Alexander Boest-Petersen - https://www.linkedin.com/in/alexanderboest-petersen/ - aboestpetersen@gmail.com
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->

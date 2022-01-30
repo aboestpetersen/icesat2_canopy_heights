@@ -96,17 +96,20 @@ autocorrelation_dist=250):
 
         # Create download directory if necessary
         Path(working_directory).mkdir(parents=True, exist_ok=True)
-        h5_storage = working_directory + '/atl'
-        Path(h5_storage).mkdir(parents=True, exist_ok=True)
+        #h5_storage = working_directory + '/atl'
+        #Path(h5_storage).mkdir(parents=True, exist_ok=True)
 
         # Download ICESat-2 files if requested
         if download == True:
+            h5_storage = working_directory + '/atl'
+            Path(h5_storage).mkdir(parents=True, exist_ok=True)
             print('Downloading data from {} to {}.'.format(date_range[0],
             date_range[1]))
             download_icesat(data_type=data_type, spatial_extent=spatial_extent, 
             date_range=date_range, username=username, email=email, 
             output_location=h5_storage)
         else:
+            h5_storage = working_directory
             print('Not downloading raw files from NSIDC.')
             pass
 

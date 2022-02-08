@@ -2,6 +2,7 @@
 Author: Alexander Boest-Petersen, 2022
 TODO: Documentation.
 TODO: Clean up imports.
+TODO: GEDI Implementation?
 '''
 
 import glob

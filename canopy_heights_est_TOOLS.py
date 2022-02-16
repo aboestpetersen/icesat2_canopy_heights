@@ -2,12 +2,13 @@
 Author: Alexander Boest-Petersen, 2022
 TODO: Documentation.
 TODO: Clean up imports.
+TODO: Plot canopy estimations.
 TODO: GEDI Implementation?
 '''
 
 import glob
 import os
-import sys
+#import sys
 import urllib
 import zipfile
 from datetime import datetime
@@ -15,14 +16,15 @@ from pathlib import Path
 
 import geopandas as gpd
 import icepyx as ipx
+import matplotlib.pyplot as plt
 import pandas as pd
-from pandas.core.reshape.reshape import stack_multiple
-from shapely.validation import make_valid
+#from pandas.core.reshape.reshape import stack_multiple
+#from shapely.validation import make_valid
 from tqdm.notebook import tqdm_notebook
 
 # Import PhoREAL 'getAtlMeasuredSwath' tool
-os.getcwd()
-os.chdir('PhoREAL/source_code/')
+#print(os.getcwd())
+os.chdir('C:/Users/albp/OneDrive - DHI/Documents/GitHub/icesat2_canopy_heights/PhoREAL/source_code/') # Figure out how to clean this up.
 from getAtlMeasuredSwath_auto import getAtlMeasuredSwath
 
 # Get todays date for downloading data
@@ -39,7 +41,7 @@ def download_icesat(data_type='ATL03', spatial_extent=False, date_range=
         date_range - Date range for download of ICESat-2 data.
         username - NASA EarthData username.
         email - NASA EarthData email.
-        output_location - Directoy to store downloaded files.
+        output_location - Directory to store downloaded files.
 
     TODO: Documentation
     '''
@@ -90,6 +92,9 @@ autocorrelation_dist=250):
     TODO: Handle duplicate rows appropriately.
     TODO: Append dataframes to csv to handle memory?
         Sundarban 2019-01-01 to 2019-07-31, 117 csv files takes 15:48 to process.
+    TODO: Improve canopy detection.
+        Only select 95 percentile for canopy?
+        DRAGANN Method?
     '''
     
     # Only execute code if input ATL03.h5 filepath and outpath declared
@@ -153,7 +158,7 @@ autocorrelation_dist=250):
         for csvs in tqdm_notebook(csvFiles):
 
             # Obtain .h5 file name
-            print('Processing: {}.'.format(csvs))
+            #print('Processing: {}.'.format(csvs))
 
             # Load CSV file into dataframe
             df = pd.read_csv(csvs)
@@ -181,21 +186,19 @@ autocorrelation_dist=250):
 
                     # Located lowest elevation of each bin to define as the 'ground'
                     df_ground['ground_est'] = df_ground.groupby('bin')['Height (m MSL)'].transform('min')
-                    print('Ground returns estimated for {}.'.format(csvs))
+                    #print('Ground returns estimated for {}.'.format(csvs))
 
                     # Filter data to x classes for canopy estimations
                     df_canopy = df[df['Signal Confidence'] > 0]
 
                     # Create binned canopy dataframe
-                    df_canopy['canopy_bin'] = pd.cut(df_canopy['Along-Track (m)'], 
-                    bins=nbins, include_lowest=True)
+                    df_canopy['canopy_bin'] = pd.cut(df_canopy['Along-Track (m)'], bins=nbins, include_lowest=True)
 
                     # Locate and define max return height for each bin
                     df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].transform('max')
 
                     # Remove canopy estimates that fall below ground level
-                    df_canopy['elev_bin'] = pd.cut(df_canopy['Along-Track (m)'], 
-                    bins=nbins, include_lowest=True)
+                    df_canopy['elev_bin'] = pd.cut(df_canopy['Along-Track (m)'], bins=nbins, include_lowest=True)
 
                     df_canopy['ground_est'] = df_canopy.groupby('elev_bin')['Height (m MSL)'].transform('min')
 
@@ -209,7 +212,7 @@ autocorrelation_dist=250):
                     # Calculate height of canopy above ground
                     d_mean['canopy_height_est'] = (d_mean['toc_est_mean'] - 
                     d_mean['ground_est_mean'])
-                    print('Canopy returns estimated for {}.'.format(csvs))
+                    #print('Canopy returns estimated for {}.'.format(csvs))
 
                     # Remove rows with no coordinates
                     d_mean.dropna(subset=['Longitude (deg)_mean'], inplace=True)
@@ -222,12 +225,16 @@ autocorrelation_dist=250):
                 
                     # Concat final dataframe to merged set
                     merged_df = pd.concat([merged_df, d_mean])
-                    print('Merged csv has {} entrys.'.format(len(merged_df)))
+                    print('{} canopy heights calculated...'.format(len(merged_df)))
                     break
                 
                 except ValueError:
                     print('Erroneous data, skipping.')
                     break
+
+        # Plot overview of created data
+        print(merged_df.head())
+        plot_overview(data=merged_df, resolution=along_track_res, save_path=output_location)
 
         # Drop empty/unnecessary columns
         merged_df.drop(merged_df.iloc[:,0:22], axis=1, inplace=True)
@@ -257,6 +264,29 @@ autocorrelation_dist=250):
 
     else:
         print('ERROR: No .h5 files found and/or no output directory specified.')
+
+'''WORK IN PROGRESS
+Plot overview of processed data.
+'''
+def plot_overview(data=False, resolution=False, save_path=False):
+    # Plot ground elevation
+    plt.plot(data['Along-Track (m)'], data['ground_est_mean'], color='r', lw=0.75, zorder=1, label='Ground Level Est.')
+    # Plot top of canopy elevation
+    plt.plot(data['Along-Track (m)'], data['toc_est_mean'], color='g', lw=0.75, zorder=1, label='T.O.C. Est.')
+    # Plot ground points
+    plt.scatter(data['Along-Track (m)'], data['ground_est_mean'], color='r', s=2, alpha=0.6, zorder=3, label='Lowest Bin Elev.')
+    # Plot canopy points
+    plt.scatter(data['Along-Track (m)'], data['Height (m MSL)'], color='black', s=0.25, alpha=0.6, zorder=2, label='Photon Returns')
+    # Title
+    plt.title('Estimated T.O.C. Elevation ({}m Bins)'.format(resolution), fontsize=8)
+    # X & Y Labels
+    plt.xlabel('Along-Track (m)', fontsize=6)
+    plt.ylabel('Return Height (m MSL)', fontsize=6)
+    # Legend
+    plt.legend(loc='upper right', prop={'size': 6})
+    # Save generate figure
+    plt.savefig(save_path + 'data_overview.png')
+    print('Overview plot generated...')
 
 '''WORK IN PROGRESS'''
 def gmw_mangroves(gmw2016_path=False, spatial_extent=False,

@@ -17,6 +17,7 @@ from pathlib import Path
 import geopandas as gpd
 import icepyx as ipx
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 #from pandas.core.reshape.reshape import stack_multiple
 #from shapely.validation import make_valid
@@ -194,8 +195,16 @@ autocorrelation_dist=250):
                     # Create binned canopy dataframe
                     df_canopy['canopy_bin'] = pd.cut(df_canopy['Along-Track (m)'], bins=nbins, include_lowest=True)
 
-                    # Locate and define max return height for each bin
-                    df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].transform('max')
+                    # Locate and define 95 Percentile return height for each bin
+                    df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].transform('max') # Original
+                    #df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].quantile(q=0.95)
+
+                    #print('TOC Est: ' + str(df_canopy['toc_est']))
+
+                    #print('95 Percentile: ' + str(df_canopy.groupby('canopy_bin')['Height (m MSL)'].quantile(q=0.95)))
+
+                    # Remove rows with no canopy height estimations
+                    df_canopy = df_canopy.dropna(subset=['toc_est'])
 
                     # Remove canopy estimates that fall below ground level
                     df_canopy['elev_bin'] = pd.cut(df_canopy['Along-Track (m)'], bins=nbins, include_lowest=True)
@@ -233,7 +242,7 @@ autocorrelation_dist=250):
                     break
 
         # Plot overview of created data
-        print(merged_df.head())
+        #print(merged_df.head())
         plot_overview(data=merged_df, resolution=along_track_res, save_path=output_location)
 
         # Drop empty/unnecessary columns

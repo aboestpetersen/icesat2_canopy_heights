@@ -196,12 +196,8 @@ autocorrelation_dist=250):
                     df_canopy['canopy_bin'] = pd.cut(df_canopy['Along-Track (m)'], bins=nbins, include_lowest=True)
 
                     # Locate and define 95 Percentile return height for each bin
-                    df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].transform('max') # Original
-                    #df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].quantile(q=0.95)
-
-                    #print('TOC Est: ' + str(df_canopy['toc_est']))
-
-                    #print('95 Percentile: ' + str(df_canopy.groupby('canopy_bin')['Height (m MSL)'].quantile(q=0.95)))
+                    df_canopy['toc_est'] = df_canopy.groupby('canopy_bin')['Height (m MSL)'].transform('max')
+                    df_canopy['toc_est'] = df_canopy['toc_est'].mul(0.95)
 
                     # Remove rows with no canopy height estimations
                     df_canopy = df_canopy.dropna(subset=['toc_est'])
@@ -243,7 +239,7 @@ autocorrelation_dist=250):
 
         # Plot overview of created data
         #print(merged_df.head())
-        plot_overview(data=merged_df, resolution=along_track_res, save_path=output_location)
+        #plot_overview(data=merged_df, resolution=along_track_res, save_path=output_location)
 
         # Drop empty/unnecessary columns
         merged_df.drop(merged_df.iloc[:,0:22], axis=1, inplace=True)
@@ -285,7 +281,7 @@ def plot_overview(data=False, resolution=False, save_path=False):
     # Plot ground points
     plt.scatter(data['Along-Track (m)'], data['ground_est_mean'], color='r', s=2, alpha=0.6, zorder=3, label='Lowest Bin Elev.')
     # Plot canopy points
-    plt.scatter(data['Along-Track (m)'], data['Height (m MSL)'], color='black', s=0.25, alpha=0.6, zorder=2, label='Photon Returns')
+    plt.scatter(data['Along-Track (m)'], data['Height (m MSL)_mean'], color='black', s=0.25, alpha=0.6, zorder=2, label='Photon Returns')
     # Title
     plt.title('Estimated T.O.C. Elevation ({}m Bins)'.format(resolution), fontsize=8)
     # X & Y Labels
